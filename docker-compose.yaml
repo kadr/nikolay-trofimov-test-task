@@ -1,0 +1,44 @@
+version: '3.1'
+services:
+  devbox:
+    image: "${AIDBOX_IMAGE}"
+    depends_on:
+      - "devbox-db"
+    links:
+      - "devbox-db:database"
+    env_file:
+      - .env
+    environment:
+      PGHOST: database
+      AIDBOX_CONFIG: /var/config/config.edn
+    volumes:
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh:cached
+      - ./config:/var/config:cached
+    command: ["wait-for-it.sh", "database:5432", "--strict", "--timeout=0", "--", "java", "-jar", "/aidbox.jar", "-m", "devbox.core"]
+    ports:
+      - "${EXTERNAL_PORT_AIDBOX}:${AIDBOX_PORT}"
+  devbox-db:
+    image: "${PGIMAGE}"
+    ports:
+      - "${PGHOSTPORT}:${PGPORT}"
+    volumes:
+    - "./pgdata:/data"
+    environment:
+      POSTGRES_USER:     "${PGUSER}"
+      POSTGRES_PASSWORD: "${PGPASSWORD}"
+      POSTGRES_DB:       "${PGDATABASE}"
+  app:
+    build: .
+    command: ["wait-for-it.sh", "devbox:${AIDBOX_PORT}", "--strict", "--timeout=0", "--", "adev", "runserver"]
+    depends_on:
+      - devbox
+    links:
+      - devbox
+    env_file:
+      - .env
+    volumes:
+      - .:/app:cached
+      - ./config:/var/config:cached
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh:cached
+    ports:
+      - "${EXTERNAL_PORT_APP}:${APP_PORT}"
