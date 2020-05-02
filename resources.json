@@ -1,0 +1,26 @@
+{
+  "Client": {
+    "SPA": {
+      "secret": "123456",
+      "grant_types": [
+        "password"
+      ]
+    }
+  },
+  "User": {
+    "superadmin": {
+      "email": "superadmin@example.com",
+      "password": "12345678"
+    }
+  },
+  "AccessPolicy": {
+    "superadmin": {
+      "engine": "json-schema",
+      "schema": {
+        "required": [
+          "user"
+        ]
+      }
+    }
+  }
+}
