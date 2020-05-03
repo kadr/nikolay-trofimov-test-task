@@ -9,9 +9,10 @@ from fhirpy.base.resource import AbstractResource
 from aidbox_python_sdk.main import create_app as _create_app
 from aidbox_python_sdk.sdk import SDK
 from aidbox_python_sdk.settings import Settings
-from api.appointment.appointment import Appointment
-from api.service_request.service_request import ServiceRequest
-from api.slot.slot import Slot
+from resources.resource import Resource
+from resources.appointment.appointment import Appointment
+from resources.service_request.service_request import ServiceRequest
+from resources.slot.slot import Slot
 from helpers.response import success_response, error_response
 
 logger = logging.getLogger()
@@ -52,8 +53,8 @@ async def create_appointment(operation, request: dict):
     if not is_required_args_present(requirement_args, list(req.keys())):
         return error_response('Some of requirements fields not present', web)
 
-    appointment: Appointment = Appointment(sdk)
-    slot: Slot = Slot(sdk)
+    appointment: Resource = Appointment(sdk)
+    slot: Resource = Slot(sdk)
 
     name: str = req.get('name')
     begin_date: str = req.get('begin_date').replace(' ', 'T')
@@ -116,8 +117,8 @@ async def create_service_request(operation, request):
     condition_id: str = req.get('condition_id')
     appointment_id: str = req.get('appointment_id')
 
-    appointment: Appointment = Appointment(sdk, appointment_id)
-    service_request: ServiceRequest = ServiceRequest(sdk)
+    appointment: Resource = Appointment(sdk, appointment_id)
+    service_request: Resource = ServiceRequest(sdk)
 
     fields: dict = {
         'supportingInfo': [
@@ -165,8 +166,8 @@ async def move_service_request_to_appointment(operation, request):
     service_request_id: str = req.get('service_request_id')
     appointment_id: str = req.get('appointment_id')
 
-    new_appointment: Appointment = Appointment(sdk, appointment_id)
-    service_request: ServiceRequest = ServiceRequest(sdk, service_request_id)
+    new_appointment: Resource = Appointment(sdk, appointment_id)
+    service_request: Resource = ServiceRequest(sdk, service_request_id)
 
     try:
         """
@@ -174,7 +175,7 @@ async def move_service_request_to_appointment(operation, request):
             создаю экземпляр клясса с id найденого консилиума и удаляю привязку к заявке
         """
         old_appointment_: AbstractResource = (await Appointment.search(sdk, {'based_on': service_request_id}))[0]
-        old_appointment: Appointment = Appointment(sdk, old_appointment_.get('id'))
+        old_appointment: Resource = Appointment(sdk, old_appointment_.get('id'))
         await old_appointment.remove_fields(['basedOn'])
 
         """ Удаляю привязку к слоту старого консилиума """

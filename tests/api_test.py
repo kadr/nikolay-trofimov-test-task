@@ -7,8 +7,8 @@ from fhirpy.base.resource import AbstractResource
 from aidbox_python_sdk.main import create_app
 from aidbox_python_sdk.sdk import SDK
 from aidbox_python_sdk.settings import Settings
-from api.appointment.appointment import Appointment
-from api.service_request.service_request import ServiceRequest
+from resources.appointment.appointment import Appointment
+from resources.service_request.service_request import ServiceRequest
 
 
 class TestApiClasses:

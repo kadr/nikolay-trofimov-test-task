@@ -4,42 +4,39 @@ from aidboxpy import AsyncAidboxResource
 from fhirpy.base.resource import AbstractResource
 
 from aidbox_python_sdk.sdk import SDK
+from resources.resource import Resource
 
 
-class Slot:
-    """Класс для работы со слотами"""
-
-    _pk: str
-    _sdk: SDK
+class Appointment(Resource):
+    """Класс для работы с консилиумами"""
 
     def __init__(self, sdk: SDK, pk: str = None):
-        self._pk = pk
-        self._sdk = sdk
+        super().__init__(pk, sdk)
 
     async def create(self, fields: dict) -> str:
-        """Создание нового слота"""
+        """Создание нового консилиума"""
         try:
-            slot: AbstractResource = self._sdk.client.resource(
+            appointment: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
                 **fields
             )
-            await slot.save()
-            self._pk = slot.id
+            await appointment.save()
+            self._pk = appointment.id
 
             return self._pk
         except BaseException as e:
             raise BaseException(e)
 
     async def get(self) -> AbstractResource:
-        """Получить слот по идентификатору"""
+        """Получить консилиум по идентификатору"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            slot: AbstractResource = await self._sdk.client.resources(self.__class__.__name__).get(id=self._pk)
-            del slot['resourceType']
+            appointment: AbstractResource = await self._sdk.client.resources(self.__class__.__name__).get(id=self._pk)
+            del appointment['resourceType']
 
-            return slot
+            return appointment
         except BaseException as e:
             raise BaseException(e)
 
@@ -50,7 +47,7 @@ class Slot:
             raise AttributeError('Attribute search must not be empty.')
 
         try:
-            resources: AsyncAidboxResource = await sdk.client.resources(Slot.__name__) \
+            resources: AsyncAidboxResource = await sdk.client.resources(Appointment.__name__) \
                 .search(**search) \
                 .fetch()
             if len(resources) == 0:
@@ -61,16 +58,16 @@ class Slot:
         return resources
 
     async def add_fields(self, fields: dict) -> object:
-        """Добавление полей в слот"""
+        """Добавление полей в консилиум"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            slot: AbstractResource = await self.get()
+            appointment: AbstractResource = await self.get()
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **slot,
+                **appointment,
                 **fields
             )
             await instance.save()
@@ -82,7 +79,7 @@ class Slot:
 
     async def add_subfields(self, fields: Tuple[str, List[dict]]) -> object:
         """
-            Добавления вложенных полей в слота
+            Добавления вложенных полей в консилиум
             :param fields ('supportingInfo', [
                 {'id': '4c1736cc-4186-4c5c-afd8-8ae070da033b', 'resourceType': 'Slot'},
                 ...
@@ -92,16 +89,16 @@ class Slot:
             raise AttributeError('Id is not present')
 
         try:
-            slot: AbstractResource = await self.get()
+            appointment: AbstractResource = await self.get()
 
             key, items = fields
-            if slot.get(key) is not None and isinstance(slot.get(key), list):
+            if appointment.get(key) is not None and isinstance(appointment.get(key), list):
                 for item in items:
-                    slot.get(key).append(item)
+                    appointment.get(key).append(item)
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **slot,
+                **appointment,
             )
             await instance.save()
 
@@ -111,18 +108,18 @@ class Slot:
         return self
 
     async def remove_fields(self, fields: List[str]) -> object:
-        """Удаление полей из слота"""
+        """Удаление полей из консилиума"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            slot: AbstractResource = await self.get()
+            appointment: AbstractResource = await self.get()
             for field in fields:
-                del slot[field]
+                del appointment[field]
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **slot
+                **appointment
             )
             await instance.save()
 
@@ -133,26 +130,26 @@ class Slot:
 
     async def remove_subfields(self, fields: Tuple[str, List[str]]) -> object:
         """
-            Удаление вложенных полей из слота
+            Удаление вложенных полей из консилиума
             :param fields ('supportingInfo', ['4c1736cc-4186-4c5c-afd8-8ae070da033b'])
         """
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            slot: AbstractResource = await self.get()
+            appointment: AbstractResource = await self.get()
 
             key, ids = fields
-            field: List[dict] = slot.get(key)
+            field: List[dict] = appointment.get(key)
             if field is not None and isinstance(field, list):
                 for index, item in enumerate(field):
                     id_ = item.get('id')
                     if id_ is not None and id_ in ids:
-                        del slot[key][index]
+                        del appointment[key][index]
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **slot
+                **appointment
             )
             await instance.save()
 
@@ -173,7 +170,3 @@ class Slot:
         await instance.delete()
 
         return self
-
-    def get_id(self):
-        """Возвращаем идентификатор"""
-        return self._pk

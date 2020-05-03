@@ -4,17 +4,14 @@ from aidboxpy import AsyncAidboxResource
 from fhirpy.base.resource import AbstractResource
 
 from aidbox_python_sdk.sdk import SDK
+from resources.resource import Resource
 
 
-class ServiceRequest:
+class ServiceRequest(Resource):
     """Класс для работы с заявками"""
 
-    _pk: str
-    _sdk: SDK
-
     def __init__(self, sdk: SDK, pk: str = None):
-        self._pk = pk
-        self._sdk = sdk
+        super().__init__(pk, sdk)
 
     async def create(self, fields: dict) -> str:
         """Создание новой заявки"""
@@ -173,7 +170,3 @@ class ServiceRequest:
         await instance.delete()
 
         return self
-
-    def get_id(self):
-        """Возвращаем идентификатор"""
-        return self._pk

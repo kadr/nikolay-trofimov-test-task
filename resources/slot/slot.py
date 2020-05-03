@@ -4,42 +4,39 @@ from aidboxpy import AsyncAidboxResource
 from fhirpy.base.resource import AbstractResource
 
 from aidbox_python_sdk.sdk import SDK
+from resources.resource import Resource
 
 
-class Appointment:
-    """Класс для работы с консилиумами"""
-
-    _pk: str
-    _sdk: SDK
+class Slot(Resource):
+    """Класс для работы со слотами"""
 
     def __init__(self, sdk: SDK, pk: str = None):
-        self._pk = pk
-        self._sdk = sdk
+        super().__init__(pk, sdk)
 
     async def create(self, fields: dict) -> str:
-        """Создание нового консилиума"""
+        """Создание нового слота"""
         try:
-            appointment: AbstractResource = self._sdk.client.resource(
+            slot: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
                 **fields
             )
-            await appointment.save()
-            self._pk = appointment.id
+            await slot.save()
+            self._pk = slot.id
 
             return self._pk
         except BaseException as e:
             raise BaseException(e)
 
     async def get(self) -> AbstractResource:
-        """Получить консилиум по идентификатору"""
+        """Получить слот по идентификатору"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            appointment: AbstractResource = await self._sdk.client.resources(self.__class__.__name__).get(id=self._pk)
-            del appointment['resourceType']
+            slot: AbstractResource = await self._sdk.client.resources(self.__class__.__name__).get(id=self._pk)
+            del slot['resourceType']
 
-            return appointment
+            return slot
         except BaseException as e:
             raise BaseException(e)
 
@@ -50,7 +47,7 @@ class Appointment:
             raise AttributeError('Attribute search must not be empty.')
 
         try:
-            resources: AsyncAidboxResource = await sdk.client.resources(Appointment.__name__) \
+            resources: AsyncAidboxResource = await sdk.client.resources(Slot.__name__) \
                 .search(**search) \
                 .fetch()
             if len(resources) == 0:
@@ -61,16 +58,16 @@ class Appointment:
         return resources
 
     async def add_fields(self, fields: dict) -> object:
-        """Добавление полей в консилиум"""
+        """Добавление полей в слот"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            appointment: AbstractResource = await self.get()
+            slot: AbstractResource = await self.get()
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **appointment,
+                **slot,
                 **fields
             )
             await instance.save()
@@ -82,7 +79,7 @@ class Appointment:
 
     async def add_subfields(self, fields: Tuple[str, List[dict]]) -> object:
         """
-            Добавления вложенных полей в консилиум
+            Добавления вложенных полей в слота
             :param fields ('supportingInfo', [
                 {'id': '4c1736cc-4186-4c5c-afd8-8ae070da033b', 'resourceType': 'Slot'},
                 ...
@@ -92,16 +89,16 @@ class Appointment:
             raise AttributeError('Id is not present')
 
         try:
-            appointment: AbstractResource = await self.get()
+            slot: AbstractResource = await self.get()
 
             key, items = fields
-            if appointment.get(key) is not None and isinstance(appointment.get(key), list):
+            if slot.get(key) is not None and isinstance(slot.get(key), list):
                 for item in items:
-                    appointment.get(key).append(item)
+                    slot.get(key).append(item)
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **appointment,
+                **slot,
             )
             await instance.save()
 
@@ -111,18 +108,18 @@ class Appointment:
         return self
 
     async def remove_fields(self, fields: List[str]) -> object:
-        """Удаление полей из консилиума"""
+        """Удаление полей из слота"""
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            appointment: AbstractResource = await self.get()
+            slot: AbstractResource = await self.get()
             for field in fields:
-                del appointment[field]
+                del slot[field]
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **appointment
+                **slot
             )
             await instance.save()
 
@@ -133,26 +130,26 @@ class Appointment:
 
     async def remove_subfields(self, fields: Tuple[str, List[str]]) -> object:
         """
-            Удаление вложенных полей из консилиума
+            Удаление вложенных полей из слота
             :param fields ('supportingInfo', ['4c1736cc-4186-4c5c-afd8-8ae070da033b'])
         """
         if self._pk is None:
             raise AttributeError('Id is not present')
 
         try:
-            appointment: AbstractResource = await self.get()
+            slot: AbstractResource = await self.get()
 
             key, ids = fields
-            field: List[dict] = appointment.get(key)
+            field: List[dict] = slot.get(key)
             if field is not None and isinstance(field, list):
                 for index, item in enumerate(field):
                     id_ = item.get('id')
                     if id_ is not None and id_ in ids:
-                        del appointment[key][index]
+                        del slot[key][index]
 
             instance: AbstractResource = self._sdk.client.resource(
                 resource_type=self.__class__.__name__,
-                **appointment
+                **slot
             )
             await instance.save()
 
@@ -173,7 +170,3 @@ class Appointment:
         await instance.delete()
 
         return self
-
-    def get_id(self):
-        """Возвращаем идентификатор"""
-        return self._pk
