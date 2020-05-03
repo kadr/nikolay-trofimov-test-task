@@ -61,6 +61,11 @@ class Resource(ABC):
         pass
 
     @classmethod
-    def get_id(self):
+    def get_id(cls) -> str:
         """Возвращаем идентификатор"""
-        return self._pk
+        return cls._pk
+
+    @classmethod
+    def set_id(cls, pk: str):
+        """Записываем идентификатор"""
+        cls._pk = pk
