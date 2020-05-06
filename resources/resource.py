@@ -13,7 +13,7 @@ class Resource(ABC):
     _pk: str
     _sdk: SDK
 
-    def __init__(self, pk: str, sdk: SDK):
+    def __init__(self, sdk: SDK, pk: str):
         self._sdk = sdk
         self._pk = pk
 
@@ -27,10 +27,26 @@ class Resource(ABC):
         """Получить ресурса по идентификатору"""
         pass
 
-    @staticmethod
-    async def search(sdk: SDK, search: dict) -> AsyncAidboxResource:
-        """Поиск по произвольным параметрам"""
+    async def update(self, field: str, val) -> object:
+        """Обновление значения поля"""
         pass
+
+    @staticmethod
+    async def search(sdk: SDK, resource_name: str, search: dict) -> AsyncAidboxResource:
+        """Поиск по произвольным параметрам"""
+        if len(search) == 0:
+            raise AttributeError('Attribute search must not be empty.')
+
+        try:
+            resources: AsyncAidboxResource = await sdk.client.resources(resource_name) \
+                .search(**search) \
+                .fetch()
+            if len(resources) == 0:
+                raise BaseException('Can not find appointments by given params')
+        except BaseException as e:
+            raise BaseException(e)
+
+        return resources
 
     @abstractmethod
     async def add_fields(self, fields: dict) -> object:
@@ -60,12 +76,10 @@ class Resource(ABC):
         """Удаляем запись"""
         pass
 
-    @classmethod
-    def get_id(cls) -> str:
+    def get_id(self) -> str:
         """Возвращаем идентификатор"""
-        return cls._pk
+        return self._pk
 
-    @classmethod
     def set_id(cls, pk: str):
         """Записываем идентификатор"""
         cls._pk = pk

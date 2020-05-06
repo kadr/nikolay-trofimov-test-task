@@ -163,36 +163,6 @@
       "comment": "The slots attached to this schedule should be specialized to cover immunizations within the clinic"
     }
   },
-  "Slot": {
-    "ad3f8066-b464-474c-8151-e85f202f18c4": {
-      "end": "2020-03-29T16:00:00.000Z",
-      "start": "2020-03-29T16:00:00.000Z",
-      "status": "free",
-      "schedule": {
-        "id": "ad3f8065-b454-474c-8151-e85f202f18c5",
-        "resourceType": "Schedule"
-      },
-      "meta": {
-        "lastUpdated": "2020-03-30T06:05:58.802415Z",
-        "createdAt": "2020-03-30T06:05:58.802415Z",
-        "versionId": "60524"
-      }
-    },
-    "cd3f8266-d464-474c-7151-s85f502f18m2": {
-      "end": "2020-03-29T16:00:00.000Z",
-      "start": "2020-03-29T16:00:00.000Z",
-      "status": "free",
-      "schedule": {
-        "id": "ad3f8065-b454-474c-8151-e85f202f18c5",
-        "resourceType": "Schedule"
-      },
-      "meta": {
-        "lastUpdated": "2020-03-30T06:05:58.802415Z",
-        "createdAt": "2020-03-30T06:05:58.802415Z",
-        "versionId": "60524"
-      }
-    }
-  },
   "Composition": {
     "ad3f8465-b454-494c-8351-e85f282f48c4": {
       "text": {

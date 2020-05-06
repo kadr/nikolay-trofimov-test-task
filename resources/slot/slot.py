@@ -11,7 +11,7 @@ class Slot(Resource):
     """Класс для работы со слотами"""
 
     def __init__(self, sdk: SDK, pk: str = None):
-        super().__init__(pk, sdk)
+        super().__init__(sdk, pk)
 
     async def create(self, fields: dict) -> str:
         """Создание нового слота"""
@@ -40,22 +40,32 @@ class Slot(Resource):
         except BaseException as e:
             raise BaseException(e)
 
-    @staticmethod
-    async def search(sdk: SDK, search: dict) -> AsyncAidboxResource:
-        """Поиск по произвольным параметрам"""
-        if len(search) == 0:
-            raise AttributeError('Attribute search must not be empty.')
-
+    async def update(self, field: str, val) -> object:
+        """Обновление значения поля"""
+        if self._pk is None:
+            raise AttributeError('Id is not present')
         try:
-            resources: AsyncAidboxResource = await sdk.client.resources(Slot.__name__) \
-                .search(**search) \
-                .fetch()
-            if len(resources) == 0:
-                raise BaseException('Can not find appointments by given params')
+            slot: AbstractResource = await self.get()
+            slot[field] = val
+
+            instance: AbstractResource = self._sdk.client.resource(
+                resource_type=self.__class__.__name__,
+                **slot,
+            )
+            await instance.save()
+
         except BaseException as e:
             raise BaseException(e)
 
-        return resources
+        return self
+
+    @staticmethod
+    async def search(sdk: SDK, search: dict, resource_name: str = None) -> AsyncAidboxResource:
+        """Поиск по произвольным параметрам"""
+        if resource_name is None:
+            resource_name = Slot.__name__
+
+        return await super().search(sdk, resource_name, search)
 
     async def add_fields(self, fields: dict) -> object:
         """Добавление полей в слот"""
@@ -170,3 +180,35 @@ class Slot(Resource):
         await instance.delete()
 
         return self
+
+    async def is_free(self) -> bool:
+        """Проверка слота на доступоность"""
+        if self._pk is None:
+            raise AttributeError('Id is not present')
+
+        slot: AbstractResource = await self.get()
+        if slot.status == 'free':
+            return True
+
+        return False
+
+    async def is_overbook(self) -> bool:
+        """Проверка слота на доступоность"""
+        if self._pk is None:
+            raise AttributeError('Id is not present')
+
+        slot: AbstractResource = await self.get()
+        if slot.overbook:
+            return True
+
+        return False
+
+    @staticmethod
+    async def get_free(sdk: SDK, slots: List[dict]) -> List[str]:
+        free_slots: List[str] = []
+        for slot in slots:
+            slot_: AbstractResource = await sdk.client.resources('Slot').get(id=slot.get('id'))
+            if slot_.status == 'free':
+                free_slots.append(slot_.id)
+
+        return free_slots

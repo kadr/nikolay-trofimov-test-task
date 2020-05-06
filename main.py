@@ -1,6 +1,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
+from typing import List, Tuple
 
 import coloredlogs
 from aiohttp import web
@@ -9,11 +10,11 @@ from fhirpy.base.resource import AbstractResource
 from aidbox_python_sdk.main import create_app as _create_app
 from aidbox_python_sdk.sdk import SDK
 from aidbox_python_sdk.settings import Settings
-from resources.resource import Resource
+from helpers.response import success_response, error_response
 from resources.appointment.appointment import Appointment
+from resources.resource import Resource
 from resources.service_request.service_request import ServiceRequest
 from resources.slot.slot import Slot
-from helpers.response import success_response, error_response
 
 logger = logging.getLogger()
 coloredlogs.install(level='DEBUG', fmt='%(asctime)s %(levelname)s %(message)s')
@@ -81,10 +82,8 @@ async def create_appointment(operation, request: dict):
         'comment': 'Some comment',
     }
     slot_fields: dict = {
-        'end': (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S'),
-        'start': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
         'status': 'free',
-        'overbooked': True,
+        'overbooked': False,
         'comment': 'Some comment',
         'schedule': {
             'id': 'ad3f8065-b454-474c-8151-e85f202f18c5',
@@ -92,8 +91,14 @@ async def create_appointment(operation, request: dict):
         },
     }
     try:
-        slot_id: str = await slot.create(slot_fields)
-        fields['slot'] = [{'id': slot_id, 'resourceType': 'Slot'}]
+        slots: List[dict] = []
+        for _ in range(9):
+            slot_fields['end'] = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S')
+            slot_fields['start'] = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+            slot_id: str = await slot.create(slot_fields)
+            slots.append({'id': slot_id, 'resourceType': 'Slot'})
+
+        fields['slot'] = slots
         appointment_id: str = await appointment.create(fields)
         return success_response({'id': appointment_id}, web)
     except BaseException as e:
@@ -134,11 +139,13 @@ async def create_service_request(operation, request):
 
     try:
         appointment_: AbstractResource = await appointment.get()
+        slot_id, overbooked = await _get_free_slot(appointment_['slot'])
+
+        if overbooked:
+            await appointment.add_subfields(('slot', [{'id': slot_id, 'resourceType': 'Slot'}]))
+
         if fields.get('supportingInfo') is not None and isinstance(fields.get('supportingInfo'), list):
-            for slot in appointment_.slot:
-                fields['supportingInfo'].append(slot)
-        else:
-            fields['supportingInfo'] = appointment_.slot
+            fields['supportingInfo'].append({'id': slot_id, 'resourceType': 'Slot'})
 
         service_request_id: str = await service_request.create(fields)
 
@@ -179,21 +186,55 @@ async def move_service_request_to_appointment(operation, request):
         await old_appointment.remove_fields(['basedOn'])
 
         """ Удаляю привязку к слоту старого консилиума """
-        ids = [item.get('id') for item in old_appointment_.get('slot')]
-        if len(ids) > 0:
-            await service_request.remove_subfields(('supportingInfo', ids))
+        slot_id: str = await service_request.remove_slot()
+
+        """Проверяем что это за слот, если overbooked, то удаляем, если нет, то меняем статус на free"""
+        slot: Slot = Slot(sdk, slot_id)
+        slot_: AbstractResource = await slot.get()
+        if slot_.get('overbooked'):
+            await old_appointment.remove_subfields(('slot', [slot_id]))
+            await slot.delete()
+        else:
+            await slot.update(field='status', val='free')
 
         """ Приязываю заявку к новому консилиуму """
         await new_appointment.add_fields({'basedOn': [{'resourceType': 'ServiceRequest',
                                                        'id': service_request_id}]})
 
-        """ Достаю слоты из нового консилиума и привязывю их к заявке """
+        """ Достаю слоты из нового консилиума и привязывю свободный к заявке """
         new_appointment_: AbstractResource = await new_appointment.get()
-        slots: list = new_appointment_.get('slot')
-        if len(slots) > 0:
-            await service_request.add_subfields(('supportingInfo', slots))
+
+        slot_id, overbooked = await _get_free_slot(new_appointment_.get('slot'))
+        if overbooked:
+            await new_appointment.add_subfields(('slot', [{'id': slot_id, 'resourceType': 'Slot'}]))
+
+        await service_request.add_subfields(('supportingInfo', [{'id': slot_id, 'resourceType': 'Slot'}]))
     except BaseException as e:
-        logger.error(str(e))
         return error_response(str(e), web)
 
     return success_response({}, web)
+
+
+async def _get_free_slot(slots: List[dict]) -> Tuple[str, bool]:
+    """Находим свободный слот, если есть такой, меняем у него статус на busy, если нет то создаем новый"""
+    overbooked: bool = False
+    slots: List[str] = await Slot.get_free(sdk, slots)
+    if len(slots) > 0:
+        slot: Slot = Slot(sdk, slots[0])
+        await slot.update(field='status', val='busy')
+    else:
+        overbooked = True
+        slot: Slot = Slot(sdk)
+        await slot.create({
+            'start': datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+            'end': (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%dT%H:%M:%S'),
+            'status': 'busy',
+            'overbooked': True,
+            'comment': 'Some comment',
+            'schedule': {
+                'id': 'ad3f8065-b454-474c-8151-e85f202f18c5',
+                'resourceType': 'Schedule'
+            },
+        })
+
+    return slot.get_id(), overbooked

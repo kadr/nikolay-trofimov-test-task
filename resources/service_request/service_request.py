@@ -11,7 +11,7 @@ class ServiceRequest(Resource):
     """Класс для работы с заявками"""
 
     def __init__(self, sdk: SDK, pk: str = None):
-        super().__init__(pk, sdk)
+        super().__init__(sdk, pk)
 
     async def create(self, fields: dict) -> str:
         """Создание новой заявки"""
@@ -40,22 +40,32 @@ class ServiceRequest(Resource):
         except BaseException as e:
             raise BaseException(e)
 
-    @staticmethod
-    async def search(sdk: SDK, search: dict) -> AsyncAidboxResource:
-        """Поиск по произвольным параметрам"""
-        if len(search) == 0:
-            raise AttributeError('Attribute: search, must not be empty.')
-
+    async def update(self, field: str, val) -> object:
+        """Обновление значения поля"""
+        if self._pk is None:
+            raise AttributeError('Id is not present')
         try:
-            resources: AsyncAidboxResource = await sdk.client.resources(ServiceRequest.__name__) \
-                .search(**search) \
-                .fetch()
-            if len(resources) == 0:
-                raise BaseException('Can not find service requests by given params')
+            service_request: AbstractResource = await self.get()
+            service_request[field] = val
+
+            instance: AbstractResource = self._sdk.client.resource(
+                resource_type=self.__class__.__name__,
+                **service_request,
+            )
+            await instance.save()
+
         except BaseException as e:
             raise BaseException(e)
 
-        return resources
+        return self
+
+    @staticmethod
+    async def search(sdk: SDK, search: dict, resource_name: str = None) -> AsyncAidboxResource:
+        """Поиск по произвольным параметрам"""
+        if resource_name is None:
+            resource_name = ServiceRequest.__name__
+
+        return await super().search(sdk, resource_name, search)
 
     async def add_fields(self, fields: dict) -> object:
         """Добавления полей в заявку"""
@@ -157,6 +167,27 @@ class ServiceRequest(Resource):
             raise BaseException(e)
 
         return self
+
+    async def remove_slot(self) -> str:
+        if self._pk is None:
+            raise AttributeError('Id is not present')
+        pk: str = ''
+        try:
+            service_request: AbstractResource = await self.get()
+            for index, item in enumerate(service_request.get('supportingInfo')):
+                if item.get('resourceType') == 'Slot':
+                    pk = item.get('id')
+                    del service_request['supportingInfo'][index]
+
+            instance: AbstractResource = self._sdk.client.resource(
+                resource_type=self.__class__.__name__,
+                **service_request
+            )
+            await instance.save()
+        except BaseException as e:
+            raise BaseException(e)
+
+        return pk
 
     async def delete(self) -> object:
         """Удаляем запись"""
